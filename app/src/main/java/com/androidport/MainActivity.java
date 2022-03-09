@@ -390,7 +390,12 @@ public class    MainActivity extends AppCompatActivity {
 //            delay = Integer.parseInt(value);
 //            PhoneParam.aecDelay = delay;
 //            AecmDelayTest.StartTest(8000, MediaRecorder.AudioSource.MIC, AudioManager.STREAM_MUSIC,160);
-            AudioMgr.RestartAudio();
+//            AudioMgr.RestartAudio();
+            if(clientTest!=null) {
+                TestDevice dev = clientTest.GetCurTestDevice();
+                dev.BuildAlert(1);
+                UpdateHMI();
+            }
         });
 
         IntentFilter filter = new IntentFilter();
@@ -534,9 +539,9 @@ public class    MainActivity extends AppCompatActivity {
                         }
 
                         if(PhoneParam.audioSpeaker==1){
-//                            audioManager.setSpeakerphoneOn(true);
+                            audioManager.setSpeakerphoneOn(true);
                         }else{
-//                            audioManager.setSpeakerphoneOn(false);
+                            audioManager.setSpeakerphoneOn(false);
                         }
 
                         return false;

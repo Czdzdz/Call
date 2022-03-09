@@ -31,25 +31,42 @@ public class InviteReqPack extends ProtocolPacket{
 
     public int autoAnswerTime;
 
-    private void CopyInviteData(InviteReqPack invitePack){
+    public static final int USE_DEVICE_NAME = 1;
+    public static final int USE_BED_NAME = 2;
+    public static final int USE_ROOM_NAME = 3;
+
+    public int nameType;
+    public String voiceInfo;
+    public String displayInfo;
+    public String handler;
+
+    public InviteReqPack(){
+
+        super();
+        voiceInfo = "";
+        displayInfo = "";
+        handler = "";
+    }
+
+    protected void CopyInviteData(InviteReqPack invitePack){
         callType = invitePack.callType;
         callDirect = invitePack.callDirect;
         callID = invitePack.callID;
 
         caller = invitePack.caller;
         callerType = invitePack.callerType;
-        callee = invitePack.callee;
+        patientName = invitePack.patientName;
+        patientAge = invitePack.patientAge;
 
         bedName = invitePack.bedName;
-        deviceName = invitePack.deviceName;
-        patientAge = invitePack.patientAge;
-        patientName = invitePack.patientName;
         roomId = invitePack.roomId;
         roomName = invitePack.roomName;
-
+        deviceName = invitePack.deviceName;
         areaId = invitePack.areaId;
         areaName = invitePack.areaName;
         isTransfer = invitePack.isTransfer;
+
+        callee = invitePack.callee;
 
         codec = invitePack.codec;
         pTime = invitePack.pTime;
@@ -59,6 +76,10 @@ public class InviteReqPack extends ProtocolPacket{
         callerRtpIP = invitePack.callerRtpIP;
 
         autoAnswerTime = invitePack.autoAnswerTime;
+
+        nameType = invitePack.nameType;
+        voiceInfo = invitePack.voiceInfo;
+        displayInfo = invitePack.displayInfo;
     }
 
     public int ExchangeCopyData(InviteReqPack pack){
@@ -67,5 +88,16 @@ public class InviteReqPack extends ProtocolPacket{
         CopyInviteData(pack);
 
         return 1;
+    }
+
+    public int Clone(InviteReqPack pack){
+        
+        type = pack.type;
+        msgID = pack.msgID;
+        sender = pack.sender;
+        receiver = pack.receiver;
+        
+        CopyInviteData(pack);
+        return 0;
     }
 }

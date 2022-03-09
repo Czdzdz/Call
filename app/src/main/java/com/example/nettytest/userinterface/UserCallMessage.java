@@ -9,24 +9,6 @@ public class UserCallMessage extends UserMessage {
     public static final int EMERGENCY_CALL_TYPE = 2;
     public static final int BROADCAST_CALL_TYPE = 3;
 
-    // same with EndReqPack
-    public static final int CALL_END_BY_SELF = 1;
-    public static final int CALL_END_BY_CALLER = 2;
-    public static final int CALL_END_BY_CALLEE = 3;
-    public static final int CALL_END_BY_LISTEN = 4;
-    public static final int CALL_END_BY_ANSWER = 5;
-    public static final int CALL_CANCEL_BY_USER  = 6;
-
-    public static final int CALL_END_FOR_CALLER_UPDATE_FAIL = 10;
-    public static final int CALL_END_FOR_CALLEE_UPDATE_FAIL = 11;
-    public static final int CALL_END_FOR_ANSWER_UPDATE_FAIL = 12;    
-    public static final int CALL_END_FOR_NO_LISTEN = 13;
-    public static final int CALL_END_FOR_OTHER_ANSWER = 14;
-    public static final int CALL_END_FOR_CALLEE_REJECT = 15;
-    public static final int CALL_END_FOR_INVITE_TIMEOVER = 16;
-    public static final int CALL_CANCEL_FOR_SERVER = 17;
-    
-
     public int callType;
     public String callId;
 

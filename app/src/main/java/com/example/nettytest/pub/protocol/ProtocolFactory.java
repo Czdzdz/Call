@@ -4,6 +4,8 @@ import com.alibaba.fastjson.*;
 import com.example.nettytest.pub.JsonPort;
 import com.example.nettytest.pub.LogWork;
 import com.example.nettytest.pub.commondevice.PhoneDevice;
+import com.example.nettytest.pub.phonecall.CommonCall;
+
 import java.io.UnsupportedEncodingException;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.CharsetUtil;
@@ -102,7 +104,13 @@ public class ProtocolFactory {
                         inviteReqPack.sample = context.getIntValue(ProtocolPacket.PACKET_SAMPLE_NAME);
                         inviteReqPack.autoAnswerTime = context.getIntValue(ProtocolPacket.PACKET_AUTOANSWER_TIME_NAME);
 
+                        if(inviteReqPack.callType>= CommonCall.ALERT_TYPE_BEGIN&&inviteReqPack.callType<=CommonCall.ALERT_TYPE_ENDED){
+                            inviteReqPack.voiceInfo = context.getString(ProtocolPacket.PACKET_VOICEINFO_NAME);
+                            inviteReqPack.displayInfo = context.getString(ProtocolPacket.PACKET_DISPLAYINFO_NAME);
+                        }
+
                         p = inviteReqPack;
+
                     }
                     break;
                 case  ProtocolPacket.CALL_RES:
@@ -544,6 +552,8 @@ public class ProtocolFactory {
                     context.put(ProtocolPacket.PACKET_AREANAME_NAME,inviteReqP.areaName);
                     context.put(ProtocolPacket.PACKET_ISTRANSFER_NAME,inviteReqP.isTransfer);
                     context.put(ProtocolPacket.PACKET_AUTOANSWER_TIME_NAME,inviteReqP.autoAnswerTime);
+                    context.put(ProtocolPacket.PACKET_VOICEINFO_NAME,inviteReqP.voiceInfo);
+                    context.put(ProtocolPacket.PACKET_DISPLAYINFO_NAME,inviteReqP.displayInfo);
                     json.put(ProtocolPacket.PACKET_CONTEXT_NAME,context);
                     break;
                 case ProtocolPacket.CALL_RES:

@@ -54,6 +54,9 @@ public class ProtocolPacket {
     public final static String PACKET_PARAM_VALUE_NAME = "paramValue";
     public final static String PACKET_PARAM_UNIT_NAME = "paramUnit";
 
+    public final static String PACKET_VOICEINFO_NAME = "voiceInfo";
+    public final static String PACKET_DISPLAYINFO_NAME = "displayInfo";
+
     public final static int REG_REQ = 1;
     public final static int REG_RES = 101;
     public final static int CALL_REQ = 2;

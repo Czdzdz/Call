@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import com.alibaba.fastjson.*;
 import com.example.nettytest.backend.backendphone.BackEndPhone;
 import com.example.nettytest.backend.backendphone.BackEndPhoneManager;
+import com.example.nettytest.pub.AlertConfig;
 import com.example.nettytest.pub.HandlerMgr;
 import com.example.nettytest.pub.LogWork;
 import com.example.nettytest.pub.SystemSnap;
@@ -56,6 +57,7 @@ public class BackEndCallConvergence {
 
     static int broadCastPort = BROAD_CAST_PORT_START;
     int curBroadCastPort =BROAD_CAST_PORT_START ;
+    InviteReqPack backupInviteReqP; // backup for build new listen Call when Phone Set Listen flag
 
 
     public String GetCallerId(){
@@ -70,6 +72,7 @@ public class BackEndCallConvergence {
 
         String listenAreaId;
         boolean isTransfer = false;
+        int result;
 
         inviteAreaId = caller.devInfo.areaId;
         
@@ -90,18 +93,28 @@ public class BackEndCallConvergence {
         
         ArrayList<BackEndPhone> listenDevices = HandlerMgr.GetBackEndListenDevices(listenAreaId,pack.callType);
 
-        if(listenDevices.size()>0){
-            inviteResP = new InviteResPack(ProtocolPacket.STATUS_OK,pack);
-        }else{
-            inviteResP = new InviteResPack(ProtocolPacket.STATUS_OK,pack);
+        if(pack.callType>=CommonCall.ALERT_TYPE_BEGIN&&pack.callType<=CommonCall.ALERT_TYPE_ENDED){
+            AlertConfig alertConfig = HandlerMgr.GetBackEndAlertConfig(listenAreaId,pack.callType);
+            if(alertConfig==null){
+                result = ProtocolPacket.STATUS_NOTSUPPORT;
+            }else{
+                pack.nameType = alertConfig.nameType;
+                pack.voiceInfo = alertConfig.voiceInfo;
+                pack.displayInfo = alertConfig.displayInfo;
+                result = ProtocolPacket.STATUS_OK;
+            }
+        }else {
+            if (listenDevices.size() > 0) {
+                result = ProtocolPacket.STATUS_OK;
+            } else {
+                result = ProtocolPacket.STATUS_OK;
+            }
         }
+
+        inviteResP = new InviteResPack(result, pack);
 
         Transaction transaction = new Transaction(caller.id,pack, inviteResP,Transaction.TRANSCATION_DIRECTION_S2C);
         HandlerMgr.AddBackEndTrans(pack.msgID,transaction);
-
-        inviteCall = new BackEndCall(caller.id,pack);
-        autoAnswerTick = 0;
-        autoAnswerTime = pack.autoAnswerTime;
 
         callerNum = pack.caller;
         calleeNum = pack.callee;
@@ -109,34 +122,45 @@ public class BackEndCallConvergence {
         enderNum = "";
 
         listenCallList = new ArrayList<>();
-        for(BackEndPhone phone:listenDevices){
-            if(caller.id.compareToIgnoreCase(phone.id)==0)
-                continue;
-            if(CheckForwardEnable(phone,pack.callType)) {
-                invitePacket = new InviteReqPack();
-                invitePacket.ExchangeCopyData(pack);
-                invitePacket.areaId = caller.devInfo.areaId;
-                invitePacket.areaName = caller.devInfo.areaName;
-                invitePacket.isTransfer = isTransfer;
-                
-                if(invitePacket.callType==CommonCall.CALL_TYPE_BROADCAST){
-                    invitePacket.autoAnswerTime = invitePacket.autoAnswerTime/2;
-                    invitePacket.callerRtpPort = curBroadCastPort;
-                }
-                invitePacket.receiver = phone.id;
-                invitePacket.msgID = UniqueIDManager.GetUniqueID(phone.id, UniqueIDManager.MSG_UNIQUE_ID);
 
-                listenCall = new BackEndCall(phone.id, invitePacket);
-                listenCall.inviteReqMsgId = invitePacket.msgID;
-                transaction = new Transaction(phone.id, invitePacket,Transaction.TRANSCATION_DIRECTION_S2C);
-                HandlerMgr.AddBackEndTrans(invitePacket.msgID, transaction);
-                listenCallList.add(listenCall);
-            }
-        }
+        autoAnswerTick = 0;
+        autoAnswerTime = pack.autoAnswerTime;
+
+        inviteCall = new BackEndCall(caller.id,pack);
+
         inviteCall.state = CommonCall.CALL_STATE_INCOMING;
         startTime = System.currentTimeMillis();
         answerTime = 0;
         isVideoMode = false;
+        backupInviteReqP = new InviteReqPack();
+        backupInviteReqP.Clone(pack);
+
+        if(result==ProtocolPacket.STATUS_OK) {
+            for (BackEndPhone phone : listenDevices) {
+                if (caller.id.compareToIgnoreCase(phone.id) == 0)
+                    continue;
+                if (CheckForwardEnable(phone, pack.callType)) {
+                    invitePacket = new InviteReqPack();
+                    invitePacket.ExchangeCopyData(pack);
+                    invitePacket.areaId = caller.devInfo.areaId;
+                    invitePacket.areaName = caller.devInfo.areaName;
+                    invitePacket.isTransfer = isTransfer;
+
+                    if (invitePacket.callType == CommonCall.CALL_TYPE_BROADCAST) {
+                        invitePacket.autoAnswerTime = invitePacket.autoAnswerTime / 2;
+                        invitePacket.callerRtpPort = curBroadCastPort;
+                    }
+                    invitePacket.receiver = phone.id;
+                    invitePacket.msgID = UniqueIDManager.GetUniqueID(phone.id, UniqueIDManager.MSG_UNIQUE_ID);
+
+                    listenCall = new BackEndCall(phone.id, invitePacket);
+                    listenCall.inviteReqMsgId = invitePacket.msgID;
+                    transaction = new Transaction(phone.id, invitePacket, Transaction.TRANSCATION_DIRECTION_S2C);
+                    HandlerMgr.AddBackEndTrans(invitePacket.msgID, transaction);
+                    listenCallList.add(listenCall);
+                }
+            }
+        }
     }
 
     public BackEndCallConvergence(BackEndPhone caller,BackEndPhone callee, InviteReqPack pack){
@@ -172,8 +196,82 @@ public class BackEndCallConvergence {
         startTime = System.currentTimeMillis();
         answerTime = 0;
         isVideoMode = false;
+        backupInviteReqP = new InviteReqPack();
+        backupInviteReqP.Clone(pack);
     }
 
+    public int UpdateCallListen(String devId){
+        boolean phoneMatched = false;
+        boolean callMatched = false;
+        BackEndCall listenCall;
+        Transaction transaction;
+        InviteReqPack invitePacket;
+        BackEndPhone caller;
+        boolean isTransfer = false;
+
+        if(inviteCall.callType==CommonCall.CALL_TYPE_BROADCAST)
+            return -1;
+        if(calleeNum.compareToIgnoreCase(PhoneParam.CALL_SERVER_ID)!=0)
+            return -1;
+        if(inviteCall.state!=CommonCall.CALL_STATE_INCOMING)
+            return -1;
+
+        String listenAreaId = HandlerMgr.GetForwardAreaId(inviteCall.caller);
+        ArrayList<BackEndPhone> listenDevices = HandlerMgr.GetBackEndListenDevices(listenAreaId,inviteCall.callType);
+        for(BackEndPhone listenPhone:listenDevices){
+            if(devId.compareToIgnoreCase(listenPhone.id)==0){
+                phoneMatched = true;
+                break;
+            }
+        }
+
+        if(phoneMatched){
+            for(BackEndCall call:listenCallList){
+                if(call.callee.compareToIgnoreCase(devId)==0){
+                    callMatched = true;
+                    break;
+                }
+            }
+            if(!callMatched){
+                // build call
+                caller = HandlerMgr.GetBackEndPhone(callerNum);
+                invitePacket = new InviteReqPack();
+                invitePacket.ExchangeCopyData(backupInviteReqP);
+                invitePacket.areaId = caller.devInfo.areaId;
+                invitePacket.areaName = caller.devInfo.areaName;
+                if(caller.devInfo.areaId.compareToIgnoreCase(listenAreaId)!=0){
+                    isTransfer = true;
+                }
+                invitePacket.isTransfer = isTransfer;
+
+                invitePacket.receiver = devId;
+                invitePacket.msgID = UniqueIDManager.GetUniqueID(devId, UniqueIDManager.MSG_UNIQUE_ID);
+                listenCall = new BackEndCall(devId, invitePacket);
+                listenCall.inviteReqMsgId = invitePacket.msgID;
+                transaction = new Transaction(devId, invitePacket,Transaction.TRANSCATION_DIRECTION_S2C);
+                HandlerMgr.AddBackEndTrans(invitePacket.msgID, transaction);
+                listenCallList.add(listenCall);
+            }
+        }
+        return 0;
+    }
+
+    InviteReqPack RestoreInviteReqPack(BackEndCall call){
+        InviteReqPack  invitePacket= new InviteReqPack();
+        BackEndPhone caller = HandlerMgr.GetBackEndPhone(callerNum);
+        boolean isTransfer = false;
+        String listenAreaId = HandlerMgr.GetForwardAreaId(inviteCall.caller);
+
+        if(caller.devInfo.areaId.compareToIgnoreCase(listenAreaId)!=0){
+            isTransfer = true;
+        }
+
+        invitePacket.areaId = caller.devInfo.areaId;
+        invitePacket.areaName = caller.devInfo.areaName;
+        invitePacket.isTransfer = isTransfer;
+        return invitePacket;
+    }
+    
     public boolean RecvSingleEnd(EndReqPack endReqP){
         EndResPack endResP;
         Transaction trans;
@@ -726,6 +824,9 @@ public class BackEndCallConvergence {
                     }
                     break;
             }
+
+            if(inviteCall.callType>=CommonCall.ALERT_TYPE_BEGIN&&inviteCall.callType<=CommonCall.ALERT_TYPE_ENDED)
+                result = true;
         }
         return result;
     }
@@ -736,54 +837,71 @@ public class BackEndCallConvergence {
         if(!phone.isReg)
             result = false;
         else{
-            switch(callType){
-                case CommonCall.CALL_TYPE_NORMAL:
-                case CommonCall.CALL_TYPE_EMERGENCY:
-                case CommonCall.CALL_TYPE_ASSIST:
-                    switch(phone.type){
-                        case BackEndPhone.BED_CALL_DEVICE:
-                            if(!phone.enableListen)
-                                result = false;
-                            break;
-                        case BackEndPhone.EMER_CALL_DEVICE:
+            if(callType>=CommonCall.ALERT_TYPE_BEGIN&&callType<=CommonCall.ALERT_TYPE_ENDED){
+                switch(phone.type){
+                    case BackEndPhone.BED_CALL_DEVICE:
+                        if(!phone.enableListen)
                             result = false;
-                            break;
-                        case BackEndPhone.CORRIDOR_CALL_DEVICE:
-                        case BackEndPhone.DOOR_CALL_DEVICE:
-                        case BackEndPhone.NURSE_CALL_DEVICE:
-                        case BackEndPhone.TV_CALL_DEVICE:
-                            break;
-                    }
-                    break;
-                case CommonCall.CALL_TYPE_BROADCAST:
-                    switch(phone.type){
-                        case BackEndPhone.BED_CALL_DEVICE:
-                        case BackEndPhone.CORRIDOR_CALL_DEVICE:
-                        case BackEndPhone.DOOR_CALL_DEVICE:
-                            if (inviteCall.caller.compareToIgnoreCase(phone.id) == 0)
+                        break;
+                    case BackEndPhone.EMER_CALL_DEVICE:
+                        result = false;
+                        break;
+                    case BackEndPhone.CORRIDOR_CALL_DEVICE:
+                    case BackEndPhone.DOOR_CALL_DEVICE:
+                    case BackEndPhone.NURSE_CALL_DEVICE:
+                    case BackEndPhone.TV_CALL_DEVICE:
+                        break;
+                }
+            }else{
+                switch(callType){
+                    case CommonCall.CALL_TYPE_NORMAL:
+                    case CommonCall.CALL_TYPE_EMERGENCY:
+                    case CommonCall.CALL_TYPE_ASSIST:
+                        switch(phone.type){
+                            case BackEndPhone.BED_CALL_DEVICE:
+                                if(!phone.enableListen)
+                                    result = false;
+                                break;
+                            case BackEndPhone.EMER_CALL_DEVICE:
                                 result = false;
-                            else if (inviteCall.callee.compareToIgnoreCase(phone.id) == 0)
-                                result = false;
-                            else if(inviteCall.answer.compareToIgnoreCase(phone.id) == 0)
-                                result = false;
-                            else {
-                                for (CommonCall listenCall : listenCallList) {
-                                    if (listenCall.devID.compareToIgnoreCase(phone.id) == 0) {
-                                        if(listenCall.state==CommonCall.CALL_STATE_CONNECTED){
-                                            result = false;
-                                            break;
+                                break;
+                            case BackEndPhone.CORRIDOR_CALL_DEVICE:
+                            case BackEndPhone.DOOR_CALL_DEVICE:
+                            case BackEndPhone.NURSE_CALL_DEVICE:
+                            case BackEndPhone.TV_CALL_DEVICE:
+                                break;
+                        }
+                        break;
+                    case CommonCall.CALL_TYPE_BROADCAST:
+                        switch(phone.type){
+                            case BackEndPhone.BED_CALL_DEVICE:
+                            case BackEndPhone.CORRIDOR_CALL_DEVICE:
+                            case BackEndPhone.DOOR_CALL_DEVICE:
+                                if (inviteCall.caller.compareToIgnoreCase(phone.id) == 0)
+                                    result = false;
+                                else if (inviteCall.callee.compareToIgnoreCase(phone.id) == 0)
+                                    result = false;
+                                else if(inviteCall.answer.compareToIgnoreCase(phone.id) == 0)
+                                    result = false;
+                                else {
+                                    for (CommonCall listenCall : listenCallList) {
+                                        if (listenCall.devID.compareToIgnoreCase(phone.id) == 0) {
+                                            if(listenCall.state==CommonCall.CALL_STATE_CONNECTED){
+                                                result = false;
+                                                break;
+                                            }
                                         }
                                     }
                                 }
-                            }
-                            break;
-                        case BackEndPhone.NURSE_CALL_DEVICE:
-                        case BackEndPhone.TV_CALL_DEVICE:
-                        case BackEndPhone.EMER_CALL_DEVICE:
-                            result = false;
-                            break;
-                    }
-                    break;
+                                break;
+                            case BackEndPhone.NURSE_CALL_DEVICE:
+                            case BackEndPhone.TV_CALL_DEVICE:
+                            case BackEndPhone.EMER_CALL_DEVICE:
+                                result = false;
+                                break;
+                        }
+                        break;
+                }
             }
         }
 
@@ -882,6 +1000,10 @@ public class BackEndCallConvergence {
                 LogWork.Print(LogWork.BACKEND_CALL_MODULE,LogWork.LOG_DEBUG,"Cancel Dev %s in Call %s",devId,inviteCall.callID);
                 break;
             }
+        }
+
+        if(answerNum.compareToIgnoreCase(devId)==0){
+            StopCall(EndReqPack.END_FOR_SERVER_CANCEL);
         }
         return result;
     }

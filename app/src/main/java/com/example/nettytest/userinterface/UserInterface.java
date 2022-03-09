@@ -4,6 +4,7 @@ import com.example.nettytest.backend.backendphone.BackEndZone;
 import com.example.nettytest.backend.backendphone.BackEndConfig;
 import com.example.nettytest.backend.backendphone.BackEndPhone;
 import com.example.nettytest.backend.callserver.DemoServer;
+import com.example.nettytest.pub.AlertConfig;
 import com.example.nettytest.pub.BackEndStatistics;
 import com.example.nettytest.pub.CallParams;
 import com.example.nettytest.pub.DeviceStatistics;
@@ -34,6 +35,10 @@ public class UserInterface {
     public final static int CALL_EMERGENCY_TYPE = 2;
     public final static int CALL_BROADCAST_TYPE = 3;
     public final static int CALL_ASSIST_TYPE = 4;
+
+    public final static int ALERT_TYPE_BEGIN = 100;
+    public final static int ALERT_TYPE_ENDED = 999;
+
 
     public final static int CALL_DIRECTION_S2C = 1;
     public final static int CALL_DIRECTION_C2S = 2;
@@ -224,6 +229,11 @@ public class UserInterface {
     	HandlerMgr.UpdateAreaDevices(areaId,devList,infoList);
     	return 0;
     }
+
+    public static int UpdateAlertConfig(String areaId, ArrayList<AlertConfig> configs){
+        HandlerMgr.UpdateAreaAlertConfig(areaId,configs);
+        return 0;
+    }
     
     public static int UpdateAreaParam(String areaId,CallParams params){
         HandlerMgr.UpdateAreaParam(areaId,params);
@@ -285,6 +295,18 @@ public class UserInterface {
         return result;
     }
 
+    public static OperationResult BuildAlert(String id,int type){
+        OperationResult result = new OperationResult();
+        if(type>CommonCall.ALERT_TYPE_ENDED-CommonCall.ALERT_TYPE_BEGIN){
+            result.result =OperationResult.OP_RESULT_FAIL;
+            result.reason = FailReason.FAIL_REASON_NOTSUPPORT;
+            LogWork.Print(LogWork.DEBUG_MODULE,LogWork.LOG_DEBUG,"Create type %d Alert From %s  Fail, Reason is %s",type,id,FailReason.GetFailName(result.reason));
+        }else{
+            result = BuildCall(id,PhoneParam.CALL_SERVER_ID,type+CommonCall.ALERT_TYPE_BEGIN);
+        }
+        return result;
+    }
+
     public static OperationResult BuildCall(String id, String peerId, int type){
         OperationResult result = new OperationResult();
         String callid;
@@ -300,8 +322,11 @@ public class UserInterface {
             case CALL_ASSIST_TYPE:
                 terminamCallType = CommonCall.CALL_TYPE_ASSIST;
                 break;
-            default:
+            case CALL_NORMAL_TYPE:
                 terminamCallType = CommonCall.CALL_TYPE_NORMAL;
+                break;
+            default:
+                terminamCallType = type;
                 break;
         }
         callid = HandlerMgr.BuildTerminalCall(id, peerId,terminamCallType);
@@ -331,6 +356,23 @@ public class UserInterface {
 
         result.callID = callid;
         return result;
+    }
+
+    public static OperationResult EndAlert(String devid,String alertId){
+        int operationCode;
+        OperationResult result;
+
+        operationCode = HandlerMgr.EndTerminalCall(devid,alertId);
+        result = new OperationResult(operationCode);
+
+        if(operationCode== ProtocolPacket.STATUS_OK)
+            LogWork.Print(LogWork.DEBUG_MODULE,LogWork.LOG_DEBUG,"End Alert %s by %s success",alertId,devid);
+        else
+            LogWork.Print(LogWork.DEBUG_MODULE,LogWork.LOG_DEBUG,"End Alert %s by %s Fail, Reason is %s",alertId,devid,FailReason.GetFailName(result.reason));
+
+        result.callID = alertId;
+        return result;
+
     }
 
     public static OperationResult EndCall(String devid,int callType){

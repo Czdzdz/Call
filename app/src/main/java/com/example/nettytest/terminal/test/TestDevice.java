@@ -3,11 +3,13 @@ package com.example.nettytest.terminal.test;
 import com.alibaba.fastjson.*;
 import com.example.nettytest.pub.LogWork;
 import com.example.nettytest.pub.SystemSnap;
+import com.example.nettytest.pub.phonecall.CommonCall;
 import com.example.nettytest.pub.result.FailReason;
 import com.example.nettytest.userinterface.ListenCallMessage;
 import com.example.nettytest.userinterface.TerminalDeviceInfo;
 import com.example.nettytest.userinterface.TestInfo;
 import com.example.nettytest.userinterface.TransferMessage;
+import com.example.nettytest.userinterface.UserAlertMessage;
 import com.example.nettytest.userinterface.UserCallMessage;
 import com.example.nettytest.pub.result.OperationResult;
 import com.example.nettytest.userinterface.PhoneParam;
@@ -43,6 +45,8 @@ public class TestDevice extends UserDevice{
 
     private ArrayList<UserDevice> devLists;
     private ArrayList<LocalCallInfo> inComingCallInfos;
+    private ArrayList<LocalAlertInfo> outGoingAlertList;
+    private ArrayList<LocalAlertInfo> inComingAlertList;
 
     private HashMap<String, Integer> inComingCallRecord;
 
@@ -57,6 +61,8 @@ public class TestDevice extends UserDevice{
         UserInterface.SetDevInfo(id,info);
         inComingCallInfos = new ArrayList<>();
         outGoingCall = new LocalCallInfo();
+        outGoingAlertList = new ArrayList<>();
+        inComingAlertList = new ArrayList<>();
         isCallOut = false;
         callOutNum = 0;
         isRegOk = false;
@@ -88,6 +94,8 @@ public class TestDevice extends UserDevice{
         inComingCallRecord = new HashMap<>();
         isVideo = false;
         videoCallId = "";
+        outGoingAlertList = new ArrayList<>();
+        inComingAlertList = new ArrayList<>();
     }
 
     public void StartDevice(){
@@ -111,6 +119,22 @@ public class TestDevice extends UserDevice{
             outGoingCall.callType = type;
             isCallOut = true;
             UserInterface.PrintLog("Build Outging Call %s by Dev %s",outGoingCall.callID,devid);
+        }
+        return result;
+    }
+
+    public OperationResult BuildAlert(int type){
+        OperationResult result;
+        result = UserInterface.BuildAlert(devid,type);
+        if(result.result == OperationResult.OP_RESULT_OK){
+            LocalAlertInfo alertInfo = new LocalAlertInfo();
+            
+            alertInfo.status = LocalAlertInfo.LOCAL_ALERT_STATUS_OUTGOING;
+            alertInfo.alertDev = devid;
+            alertInfo.alertId = result.callID;
+            alertInfo.alertType = type+ CommonCall.ALERT_TYPE_BEGIN;
+            outGoingAlertList.add(alertInfo);
+            UserInterface.PrintLog("Build Outging Alert %d  by Dev %s",type,devid);
         }
         return result;
     }
@@ -217,6 +241,13 @@ public class TestDevice extends UserDevice{
         UserInterface.QuerySystemConfig(devid);
     }
 
+    private OperationResult EndAlert(String alertId){
+        OperationResult result;
+        result = UserInterface.EndAlert(devid,alertId);
+
+        return result;
+    }
+
     private OperationResult EndCall(String callid){
         OperationResult result;
         result = UserInterface.EndCall(devid,callid);
@@ -255,21 +286,38 @@ public class TestDevice extends UserDevice{
 //        UserInterface.PrintLog("Device List TextView Touch at (%d,%d)", x, y);
         if(tvIndex==0) {
             if (type == UserInterface.CALL_BED_DEVICE||type==UserInterface.CALL_EMERGENCY_DEVICE) {
-                if (inComingCallInfos.size() == 0) {
-                    if (!isCallOut) {
-                        if(type==UserInterface.CALL_EMERGENCY_DEVICE)
-                            opResult = BuildCall(PhoneParam.CALL_SERVER_ID,UserInterface.CALL_EMERGENCY_TYPE);
-                        else
-                            opResult = BuildCall(PhoneParam.CALL_SERVER_ID,UserInterface.CALL_NORMAL_TYPE);
-                        if(opResult.result != OperationResult.OP_RESULT_OK){
-                            UserInterface.PrintLog("DEV %s Make Call Fail",devid);
-                        }else{
-                            result = true;
+                if(selected==0){  // make call or cancel call
+                    if (inComingCallInfos.size() == 0) {
+                        if (!isCallOut) {
+                            if(type==UserInterface.CALL_EMERGENCY_DEVICE)
+                                opResult = BuildCall(PhoneParam.CALL_SERVER_ID,UserInterface.CALL_EMERGENCY_TYPE);
+                            else{
+                                opResult = BuildCall(PhoneParam.CALL_SERVER_ID,UserInterface.CALL_NORMAL_TYPE);
+    //                            opResult = BuildAlert(1);
+                            }
+                            if(opResult.result != OperationResult.OP_RESULT_OK){
+                                UserInterface.PrintLog("DEV %s Make Call Fail",devid);
+                            }else{
+                                result = true;
+                            }
+                        } else {
+                            opResult = EndCall(outGoingCall.callID);
+                            if(opResult.result != OperationResult.OP_RESULT_OK){
+                                UserInterface.PrintLog("DEV %s End Call %s Fail",devid,outGoingCall.callID);
+                            }else{
+                                result = true;
+                            }
                         }
-                    } else {
-                        opResult = EndCall(outGoingCall.callID);
+                    }
+                }else{
+                    int pos = selected-1;
+                    if(outGoingAlertList.size()>0) {
+                        if(pos>=outGoingAlertList.size())
+                            pos = outGoingAlertList.size()-1;
+                        LocalAlertInfo info  = outGoingAlertList.get(pos);
+                        opResult = EndAlert(info.alertId);
                         if(opResult.result != OperationResult.OP_RESULT_OK){
-                            UserInterface.PrintLog("DEV %s End Call %s Fail",devid,outGoingCall.callID);
+                            UserInterface.PrintLog("DEV %s End Alert %s Fail",devid,info.alertId);
                         }else{
                             result = true;
                         }
@@ -324,56 +372,53 @@ public class TestDevice extends UserDevice{
                     type == UserInterface.CALL_BED_DEVICE||
                     type == UserInterface.CALL_CORRIDOR_DEVICE) {
 //                MainActivity.StopTest("Stop Test.......");
-                if(inComingCallInfos.size()==1)
-                    selected = 0;
                 if (selected < inComingCallInfos.size()) {
-                    if(true){//!isCallOut) {
-                        UserInterface.PrintLog("Select %d Call",  selected);
-                        LocalCallInfo callInfo;
-                        callInfo = inComingCallInfos.get(selected);
-                        if (callInfo.status == LocalCallInfo.LOCAL_CALL_STATUS_INCOMING) {
-                            if(callInfo.callType==UserCallMessage.EMERGENCY_CALL_TYPE){
-                                opResult = EndCall(callInfo.callID);
-                                if(opResult.result!=OperationResult.OP_RESULT_OK){
-                                    UserInterface.PrintLog("DEV %s End Call  %s Fail",devid,callInfo.callID);
-                                }else{
-                                    result = true;
-                                }
-                            }else if(callInfo.callType==UserCallMessage.NORMAL_CALL_TYPE){
-                                if(talkPeer.isEmpty()) {
-                                    opResult = AnswerCall(callInfo.callID);
-                                    if(opResult.result!=OperationResult.OP_RESULT_OK){
-                                        UserInterface.PrintLog("DEV %s Answer Call  %s Fail",devid,callInfo.callID);
-                                    }else{
-                                        result = true;
-                                    }
-                                }else{
-                                    UserInterface.PrintLog("Dev %s is Talking , Could not Answer");
-                                }
-                            }
-                        }else {
+                    UserInterface.PrintLog("Select %d Call",  selected);
+                    LocalCallInfo callInfo;
+                    callInfo = inComingCallInfos.get(selected);
+                    if (callInfo.status == LocalCallInfo.LOCAL_CALL_STATUS_INCOMING) {
+                        if(callInfo.callType==UserCallMessage.EMERGENCY_CALL_TYPE){
                             opResult = EndCall(callInfo.callID);
                             if(opResult.result!=OperationResult.OP_RESULT_OK){
                                 UserInterface.PrintLog("DEV %s End Call  %s Fail",devid,callInfo.callID);
                             }else{
                                 result = true;
                             }
+                        }else if(callInfo.callType==UserCallMessage.NORMAL_CALL_TYPE){
+                            if(talkPeer.isEmpty()) {
+                                opResult = AnswerCall(callInfo.callID);
+                                if(opResult.result!=OperationResult.OP_RESULT_OK){
+                                    UserInterface.PrintLog("DEV %s Answer Call  %s Fail",devid,callInfo.callID);
+                                }else{
+                                    result = true;
+                                }
+                            }else{
+                                UserInterface.PrintLog("Dev %s is Talking , Could not Answer");
+                            }
                         }
-
-// test for device answer all calls
-//                        for(LocalCallInfo callInfo:inComingCallInfos){
-//                            if (callInfo.status == LocalCallInfo.LOCAL_CALL_STATUS_INCOMING) {
-//                                AnswerCall(callInfo.callID);
-//                            }
-//                        }
-
-                        // test for answer 2 incoming Call
-                        
-                    }else{
-                        UserInterface.PrintLog("Dev %s is Outgoing Call, Could not Answer");
+                    }else {
+                        opResult = EndCall(callInfo.callID);
+                        if(opResult.result!=OperationResult.OP_RESULT_OK){
+                            UserInterface.PrintLog("DEV %s End Call  %s Fail",devid,callInfo.callID);
+                        }else{
+                            result = true;
+                        }
+                    }
+                }else if(selected<inComingCallInfos.size()+inComingAlertList.size()){
+                    int alertSelected = selected-inComingCallInfos.size();
+                    if(alertSelected<inComingAlertList.size()){
+                        UserInterface.PrintLog("Select %d Alert",  alertSelected);
+                        LocalAlertInfo alertInfo;
+                        alertInfo = inComingAlertList.get(alertSelected);
+                        opResult = EndAlert(alertInfo.alertId);
+                        if(opResult.result!=OperationResult.OP_RESULT_OK){
+                            UserInterface.PrintLog("DEV %s End Alert  %s Fail",devid,alertInfo.alertId);
+                        }else{
+                            result = true;
+                        }
                     }
                 }else{
-                    UserInterface.PrintLog("Select the %d Call, Select Out of Range",selected);
+                    UserInterface.PrintLog("Select the %d Item, Select Out of Range",selected);
                 }
             }
 
@@ -526,8 +571,68 @@ public class TestDevice extends UserDevice{
         }
     }
 
+    public String UpdateAlertInfo(UserAlertMessage msg){
+        String failReason = "";
+        LocalAlertInfo info;
+        synchronized(TestDevice.class){
+            switch(msg.type){
+                case UserAlertMessage.ALERT_MESSAGE_INCOMING:
+                    info = new LocalAlertInfo();
+                    info.status = LocalAlertInfo.LOCAL_ALERT_STATUS_INCOMING;
+                    info.alertType = msg.alertType;
+                    info.alertDev = msg.alertDevId;
+                    info.alertId = msg.alertID;
+
+                    inComingAlertList.add(info);
+                    UserInterface.PrintLog("Recv Incoming Alert %s in Dev %s ",info.alertId,devid);
+                    UserInterface.PrintLog("Caller name %s, area %s, room %s(%s)",msg.deviceName,msg.areaId,msg.roomId,msg.roomName);
+                    break;
+                case UserAlertMessage.ALERT_MESSAGE_SUCC:
+                    info = null;
+                    for(LocalAlertInfo alertInfo:outGoingAlertList){
+                        if(alertInfo.alertId.compareToIgnoreCase(msg.alertID)==0){
+                            info= alertInfo;
+                            break;
+                        }
+                    }
+                    if(info!=null){
+                        info.status = LocalAlertInfo.LOCAL_ALERT_STATUS_SUCC;
+                        UserInterface.PrintLog("Set Out Goning Alert %s to Succ in Dev %s",  info.alertId,devid);
+                    }
+                    break;
+                case UserAlertMessage.ALERT_MESSAGE_END:
+                    info = null;
+                    for(LocalAlertInfo alertInfo:outGoingAlertList){
+                        if(alertInfo.alertId.compareToIgnoreCase(msg.alertID)==0){
+                            outGoingAlertList.remove(alertInfo);
+                            info= alertInfo;
+                            UserInterface.PrintLog("Stop Outgoing Alert %s in Dev %s When Recv %s for %s", alertInfo.alertId,devid,UserMessage.GetMsgName(msg.type),FailReason.GetFailName(msg.reason));
+                            break;
+                        }
+                    }
+
+                    if(info==null){
+                        for(LocalAlertInfo alertInfo:inComingAlertList){
+                            if(alertInfo.alertId.compareToIgnoreCase(msg.alertID)==0){
+                                inComingAlertList.remove(alertInfo);
+                                info= alertInfo;
+                                UserInterface.PrintLog("Stop incoming Alert %s in Dev %s When Recv %s for %s", alertInfo.alertId,devid,UserMessage.GetMsgName(msg.type),FailReason.GetFailName(msg.reason));
+                                break;
+                            }
+                        }
+                    }
+
+                    if(info==null){
+                        UserInterface.PrintLog("ERROR! Recv Disconnect Alert %s in Dev %s, but couldn't find matched Call",msg.alertID,devid);
+                    }
+                    break;
+            }
+        }
+        failReason = CheckTestStatus();
+        return failReason;
+    }
+
     public String UpdateCallInfo(UserCallMessage msg){
-        int result = 0;
         String failReason = "";
         boolean isFindMatched = false;
         synchronized (TestDevice.class) {
@@ -574,7 +679,7 @@ public class TestDevice extends UserDevice{
                     }
 
                     if(!isFindMatched){
-                        UserInterface.PrintLog("ERROR! Recv Disconnect Call %s in Dev %s, but couldn't find matched Call",msg.callId,devid,UserMessage.GetMsgName(msg.type));
+                        UserInterface.PrintLog("ERROR! Recv Disconnect Call %s in Dev %s, but couldn't find matched Call",msg.callId,devid);
                     }
                     break;
                 case UserCallMessage.CALL_MESSAGE_ANSWERED:
@@ -629,8 +734,6 @@ public class TestDevice extends UserDevice{
 
 
             failReason = CheckTestStatus();
-            if(!failReason.isEmpty())
-                result = -1;
         }
         return failReason;
     }
@@ -732,6 +835,19 @@ public class TestDevice extends UserDevice{
 
             }
         }
+        for(LocalAlertInfo alertInfo:inComingAlertList){
+            switch(alertInfo.status){
+                case LocalAlertInfo.LOCAL_ALERT_STATUS_INCOMING:
+                    status += String.format("Alert %d From %s, Incoming\n", alertInfo.alertType,alertInfo.alertDev);
+                    break;
+                case LocalAlertInfo.LOCAL_ALERT_STATUS_HANDLED:
+                    status += String.format("Alert %d From %s, Handled\n", alertInfo.alertType,alertInfo.alertDev);
+                    break;
+                default:
+                    status += String.format("Alert %d From %s, Unexcept\n", alertInfo.alertType,alertInfo.alertDev);
+                    break;
+            }
+        }
         return status;
     }
 
@@ -789,6 +905,7 @@ public class TestDevice extends UserDevice{
 
     public String GetDeviceInfo(){
         String status = "";
+        boolean isShowCalling = false;
         if (isCallOut) {
             if (outGoingCall.status == LocalCallInfo.LOCAL_CALL_STATUS_OUTGOING)
                 status += String.format("%s Call to %s\n", GetDeviceName(), outGoingCall.callee);
@@ -802,11 +919,24 @@ public class TestDevice extends UserDevice{
             }
             else
                 status = String.format("%s Call to %s, Unknow....\n", GetDeviceName(), outGoingCall.callee);
-        } else {
+            isShowCalling = true;
+        }
+
+        if(!isShowCalling) {
             if (isRegOk)
                 status = String.format("%s Register Suss\n", GetDeviceName());
             else
                 status = String.format("%s Register Fail\n", GetDeviceName());
+        }
+
+        for(LocalAlertInfo alertInfo:outGoingAlertList){
+            if(alertInfo.status == LocalAlertInfo.LOCAL_ALERT_STATUS_OUTGOING){
+                status += String.format("%s Sending Alert %d\n",GetDeviceName(),alertInfo.alertType);
+            }else if(alertInfo.status == LocalAlertInfo.LOCAL_ALERT_STATUS_SUCC){
+                status += String.format("%s Send Alert %d Succ\n", GetDeviceName(), alertInfo.alertType);
+            }else if(alertInfo.status == LocalAlertInfo.LOCAL_ALERT_STATUS_HANDLED){
+                status += String.format("%s Send Alert %d , and Is Handled\n", GetDeviceName(), alertInfo.alertType);
+            }
         }
         return status;
     }

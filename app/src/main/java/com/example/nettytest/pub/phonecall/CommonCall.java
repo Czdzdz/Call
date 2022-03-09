@@ -4,15 +4,19 @@ import com.example.nettytest.pub.UniqueIDManager;
 import com.example.nettytest.pub.protocol.InviteReqPack;
 import com.example.nettytest.pub.transaction.Transaction;
 import com.example.nettytest.userinterface.PhoneParam;
+import com.example.nettytest.userinterface.UserInterface;
 
 public class CommonCall {
     public final static int CALL_DIRECT_M2S = 1;
     public final static int CALL_DIRECT_S2M = 2;
 
-    public final static int CALL_TYPE_NORMAL = 1;
-    public final static int CALL_TYPE_EMERGENCY = 2;
-    public final static int CALL_TYPE_BROADCAST = 3;
-    public final static int CALL_TYPE_ASSIST = 4;
+    public final static int CALL_TYPE_NORMAL = UserInterface.CALL_NORMAL_TYPE;
+    public final static int CALL_TYPE_EMERGENCY = UserInterface.CALL_EMERGENCY_TYPE;
+    public final static int CALL_TYPE_BROADCAST = UserInterface.CALL_BROADCAST_TYPE;
+    public final static int CALL_TYPE_ASSIST = UserInterface.CALL_ASSIST_TYPE;
+
+    public final static int ALERT_TYPE_BEGIN = UserInterface.ALERT_TYPE_BEGIN;
+    public final static int ALERT_TYPE_ENDED = UserInterface.ALERT_TYPE_ENDED;
 
     public final static int CALL_STATE_DIALING = 1;
     public final static int CALL_STATE_RINGING = 2;

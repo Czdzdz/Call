@@ -1,5 +1,6 @@
 package com.example.nettytest.backend.backendphone;
 
+import com.example.nettytest.pub.AlertConfig;
 import com.example.nettytest.pub.CallParams;
 import com.example.nettytest.pub.HandlerMgr;
 import com.example.nettytest.pub.LogWork;
@@ -23,6 +24,7 @@ public class BackEndZone {
     String areaName;
     CallParams params;
     public String transferAreaId;
+    public ArrayList<AlertConfig> alertConfigList;
     public static String DEFAULT_AREA_ID = "Default Area";
 
     HashMap<String,BackEndPhone> phoneList;
@@ -33,10 +35,21 @@ public class BackEndZone {
         transferAreaId = "";
         phoneList = new HashMap<>();
         params = new CallParams();
+        alertConfigList = new ArrayList<>();
     }
 
     public BackEndPhone GetDevice(String id){
         return phoneList.get(id);
+    }
+
+    public AlertConfig GetAlertConfig(int alertType){
+        AlertConfig matchecConfig = null;
+        for(AlertConfig config:alertConfigList){
+            if(config.alertType == alertType-CommonCall.ALERT_TYPE_BEGIN){
+                matchecConfig = config;
+            }
+        }
+        return matchecConfig;
     }
 
     public ArrayList<PhoneDevice> GetDeviceList(){
@@ -129,6 +142,7 @@ public class BackEndZone {
         phoneList.put(id, phone);
     }
 
+
     public void GetListenDevices(ArrayList<BackEndPhone> devices, int callType){
             for(String devid:phoneList.keySet()){
                 boolean isAdd = false;
@@ -210,6 +224,31 @@ public class BackEndZone {
                                 break;
                         }
                         break;
+                }
+                if(callType>=CommonCall.ALERT_TYPE_BEGIN&&callType<=CommonCall.ALERT_TYPE_ENDED){
+                    switch(phone.type){
+                        case BackEndPhone.BED_CALL_DEVICE:
+                            if(params.normalCallToBed)
+                                isAdd = true;
+                            else if(phone.enableListen)
+                                isAdd = true;
+                            break;
+                        case BackEndPhone.DOOR_CALL_DEVICE:
+                            if(params.normalCallToRoom)
+                                isAdd = true;
+                            break;
+                        case BackEndPhone.CORRIDOR_CALL_DEVICE:
+                            if(params.normalCallToCorridor)
+                                isAdd = true;
+                            break;
+                        case BackEndPhone.NURSE_CALL_DEVICE:
+                            isAdd = true;
+                            break;
+                        case BackEndPhone.TV_CALL_DEVICE:
+                            if(params.normalCallToTV)
+                                isAdd = true;
+                            break;
+                    }
                 }
                 if(isAdd){
                     devices.add(phone);

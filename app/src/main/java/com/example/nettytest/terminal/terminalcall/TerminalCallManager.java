@@ -163,7 +163,13 @@ public class TerminalCallManager {
         String callid;
         TerminalCall call;
         int direction;
-        if (!callLists.isEmpty()) {
+        int normalCall = 0;
+        for(TerminalCall callinfo:callLists.values()){
+            if(callinfo.type<CommonCall.ALERT_TYPE_BEGIN||callinfo.type>CommonCall.ALERT_TYPE_ENDED){
+                normalCall++;
+            }
+        }
+        if (normalCall>0&&(callType<CommonCall.ALERT_TYPE_BEGIN||callType>CommonCall.ALERT_TYPE_ENDED)) {
             LogWork.Print(LogWork.TERMINAL_CALL_MODULE,LogWork.LOG_ERROR,"DEV %s Build Call Fail, Dev Has %d Calls",devID,callLists.size());
             for(TerminalCall scanCall:callLists.values()){
                 LogWork.Print(LogWork.TERMINAL_CALL_MODULE,LogWork.LOG_ERROR,"DEV %s Has Call %s from %s to %s",devID,scanCall.callID,scanCall.caller,scanCall.callee);
@@ -192,16 +198,18 @@ public class TerminalCallManager {
             phone = HandlerMgr.GetPhoneDev(devId);
             if(phone!=null)
                 isListen = phone.isListenCall;
-            if(callLists.size()>0){
-                if(!isListen)
-                    result = ProtocolPacket.STATUS_BUSY;
-                else{
-                    // reject broadcall when device is call out
-                    if(packet.callType == CommonCall.CALL_TYPE_BROADCAST) {
-                        for (TerminalCall localCall : callLists.values()) {
-                            if (localCall.caller.compareToIgnoreCase(devId) == 0) {
-                                result = ProtocolPacket.STATUS_BUSY;
-                                break;
+            if(packet.callType<CommonCall.ALERT_TYPE_BEGIN||packet.callType>CommonCall.ALERT_TYPE_ENDED){
+                if(callLists.size()>0){
+                    if(!isListen)
+                        result = ProtocolPacket.STATUS_BUSY;
+                    else{
+                        // reject broadcall when device is call out
+                        if(packet.callType == CommonCall.CALL_TYPE_BROADCAST) {
+                            for (TerminalCall localCall : callLists.values()) {
+                                if (localCall.caller.compareToIgnoreCase(devId) == 0) {
+                                    result = ProtocolPacket.STATUS_BUSY;
+                                    break;
+                                }
                             }
                         }
                     }

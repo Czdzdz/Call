@@ -230,6 +230,8 @@ public class CallLogSaver {
                     LogWork.Print(LogWork.BACKEND_CALL_MODULE, LogWork.LOG_DEBUG, "Save Call Log %s succ with Res %s",curCallLog.callId,res.body().string());
                     msgReceiver.AddMessage(CALL_LOG_SAVE_FINISH,"");
                 }
+                
+                res.close();
             }
             
         });

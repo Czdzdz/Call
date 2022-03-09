@@ -3,6 +3,7 @@ package com.example.nettytest.backend.backendphone;
 import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
 import com.example.nettytest.backend.backendcall.BackEndCallConvergenceManager;
+import com.example.nettytest.pub.AlertConfig;
 import com.example.nettytest.pub.BackEndStatistics;
 import com.example.nettytest.pub.CallParams;
 import com.example.nettytest.pub.CallPubMessage;
@@ -67,7 +68,6 @@ public class BackEndPhoneManager {
 
     boolean isSendingDevInfo = false;
     
-
     private class BackEndPhoneMsgReceiver extends MsgReceiver{
         public BackEndPhoneMsgReceiver(String name){
             super(name);
@@ -108,7 +108,7 @@ public class BackEndPhoneManager {
     public BackEndPhoneManager(){
         serverAreaLists = new HashMap<>();
         systemConfigList = new ArrayList<>();
-        
+
         userMsgReceiver = null;
 
         msgReceiver = new BackEndPhoneMsgReceiver("BackEndMsgReceiver");
@@ -214,6 +214,16 @@ public class BackEndPhoneManager {
         return areaId;
     }
 
+    public AlertConfig GetAlertConfig(String areaId,int alertType){
+        AlertConfig config = null;
+        synchronized(BackEndPhoneManager.class) {
+            BackEndZone area = serverAreaLists.get(GetAreaId(areaId));
+            if(area!=null){
+               config = area.GetAlertConfig(alertType);
+            }
+        }
+        return config;
+    }
 
 // only used in callconverce
     public ArrayList<BackEndPhone> GetListenDevices(String areaId,int callType){
@@ -295,6 +305,14 @@ public class BackEndPhoneManager {
             }else{
                 area = new BackEndZone(areaId,areaName);
                 serverAreaLists.put(areaId,area);
+                ArrayList<AlertConfig> configs = new ArrayList<>();
+                AlertConfig defaultConfig = new AlertConfig();
+                defaultConfig.alertType = 1;
+                defaultConfig.displayInfo= "皮试完成";
+                defaultConfig.voiceInfo = "皮试完成";
+                defaultConfig.nameType = AlertConfig.USE_BED_NAME;
+                configs.add(defaultConfig);
+                area.alertConfigList = configs;
             }
         }
         return result;
@@ -307,6 +325,17 @@ public class BackEndPhoneManager {
             if(area==null)
                 return -1;
             area.params = param;
+        }
+        return 0;
+    }
+
+    public int UpdateAreaConfig(String areaId,ArrayList<AlertConfig> configs){
+        BackEndZone area;
+        synchronized (BackEndPhoneManager.class) {
+            area = serverAreaLists.get(areaId);
+            if(area==null)
+                return -1;
+            area.alertConfigList = configs;
         }
         return 0;
     }
@@ -760,7 +789,7 @@ public class BackEndPhoneManager {
                 resStatus = ProtocolPacket.STATUS_NOTSUPPORT;
             }else{
                 if(status){
-                    ClearListenInZoneExcept(zoneId,id);
+//                    ClearListenInZoneExcept(zoneId,id);
                 }            
                 phone.enableListen = status;
                 resStatus = ProtocolPacket.STATUS_OK;
@@ -838,6 +867,7 @@ public class BackEndPhoneManager {
 
                 trans = new Transaction(devID,packet,listgenResP,Transaction.TRANSCATION_DIRECTION_S2C);
                 HandlerMgr.AddBackEndTrans(packet.msgID, trans);
+                backEndCallConvergencyMgr.UpdateCallListen(devID,listenPacket.listenEnable);
                 break;
             case ProtocolPacket.DEV_QUERY_REQ:
                 DevQueryReqPack devReqP = (DevQueryReqPack)packet;

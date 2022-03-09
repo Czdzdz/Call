@@ -150,7 +150,7 @@ public class PhoneParam {
 
     public static int DEFAULT_SNAP_PORT = 11004;
 
-    public final static String VER_STR = "1.2.4";
+    public final static String VER_STR = "1.2.5";
 
     public static String localAddress = "";
 

@@ -10,6 +10,7 @@ import com.example.nettytest.userinterface.ListenCallMessage;
 import com.example.nettytest.userinterface.PhoneParam;
 import com.example.nettytest.userinterface.TestInfo;
 import com.example.nettytest.userinterface.TransferMessage;
+import com.example.nettytest.userinterface.UserAlertMessage;
 import com.example.nettytest.userinterface.UserCallMessage;
 import com.example.nettytest.userinterface.UserConfigMessage;
 import com.example.nettytest.userinterface.UserDevice;
@@ -339,7 +340,8 @@ public class ClientTest {
             || type == UserMessage.MESSAGE_SYSTEM_CONFIG_INFO
             || type == UserMessage.MESSAGE_TRANSFER_INFO
             || type == UserMessage.MESSAGE_LISTEN_CALL_INFO
-            || type == UserMessage.MESSAGE_VIDEO_INFO) {
+            || type == UserMessage.MESSAGE_VIDEO_INFO
+            || type == UserMessage.MESSAGE_ALERT_INFO ) {
             areaPos = 0;
             String devId = msg.devId;
 
@@ -379,6 +381,9 @@ public class ClientTest {
                                     break;
                                 case UserMessage.MESSAGE_VIDEO_INFO:
                                     dev.UpdateVideoState((UserVideoMessage)msg);
+                                    break;
+                                case UserMessage.MESSAGE_ALERT_INFO:
+                                    dev.UpdateAlertInfo((UserAlertMessage)msg);
                                     break;
                             }
                             findMatched = true;

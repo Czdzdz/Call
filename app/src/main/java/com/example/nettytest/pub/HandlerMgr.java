@@ -18,6 +18,7 @@ import com.example.nettytest.terminal.terminalphone.TerminalPhoneManager;
 import com.example.nettytest.terminal.terminaltransaction.TerminalTransactionMgr;
 import com.example.nettytest.userinterface.ServerDeviceInfo;
 import com.example.nettytest.userinterface.TerminalDeviceInfo;
+import com.example.nettytest.userinterface.UserAlertMessage;
 import com.example.nettytest.userinterface.UserCallMessage;
 import com.example.nettytest.userinterface.UserConfig;
 import com.example.nettytest.userinterface.UserDevice;
@@ -170,6 +171,9 @@ public class HandlerMgr {
         }else if(type == UserMessage.MESSAGE_SNAP){
             UserMessage  msg = (UserMessage)obj;
             LogWork.Print(LogWork.DEBUG_MODULE,LogWork.LOG_INFO,"Send Msg %s to User", UserMessage.GetMsgName(msg.type));
+        }else if(type == UserMessage.MESSAGE_ALERT_INFO){
+            UserAlertMessage  msg = (UserAlertMessage)obj;
+            LogWork.Print(LogWork.DEBUG_MODULE,LogWork.LOG_INFO,"Send Msg %s of Alert %s to dev %s", UserMessage.GetMsgName(msg.type),msg.alertID,msg.devId);
         }
         terminalPhoneMgr.SendUserMessage(type,obj);
     }
@@ -347,6 +351,10 @@ public class HandlerMgr {
     	backEndPhoneMgr.UpdateAreaDevices(areaId,devList,infoList);
     }
 
+    static public void UpdateAreaAlertConfig(String areaId,ArrayList<AlertConfig> configs){
+        backEndPhoneMgr.UpdateAreaConfig(areaId,configs);
+    }
+
     static public void UpdateAreaParam(String areaId,CallParams params){
         backEndPhoneMgr.UpdateAreaParams(areaId,params);
     }
@@ -476,6 +484,10 @@ public class HandlerMgr {
 
     static public ArrayList<BackEndPhone> GetBackEndListenDevices(String areaId,int callType){
         return backEndPhoneMgr.GetListenDevices(areaId,callType);
+    }
+
+    static public AlertConfig GetBackEndAlertConfig(String areaId,int alertType){
+        return backEndPhoneMgr.GetAlertConfig(areaId,alertType);
     }
 
 

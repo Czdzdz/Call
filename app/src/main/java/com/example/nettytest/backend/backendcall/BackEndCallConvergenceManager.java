@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
 import com.example.nettytest.backend.backendphone.BackEndPhone;
+import com.example.nettytest.pub.AlertConfig;
 import com.example.nettytest.pub.HandlerMgr;
 import com.example.nettytest.pub.LogWork;
 import com.example.nettytest.pub.SystemSnap;
@@ -124,12 +125,14 @@ public class BackEndCallConvergenceManager {
         return result;
     }
 
-    private boolean CheckInviteEnable(BackEndPhone phone){
+    private boolean CheckInviteEnable(BackEndPhone phone,int callType){
         boolean result = true;
         if(phone==null)
             return  false;
         if(!phone.isReg)
             return false;
+        if(callType>=CommonCall.ALERT_TYPE_BEGIN&&callType<=CommonCall.ALERT_TYPE_ENDED)
+            return true;
         if(!CheckDevTypeInviteEnable(phone.type)){
             LogWork.Print(LogWork.BACKEND_CALL_MODULE,LogWork.LOG_ERROR,"Dev %s Type is %d, Not Support Build Call",phone.id,phone.type);
             result = false;
@@ -211,6 +214,18 @@ public class BackEndCallConvergenceManager {
 
         return result;
     }
+
+    public int UpdateCallListen(String devId,boolean status){
+        if(status){
+            for(BackEndCallConvergence callConvergence:callConvergenceList.values()){
+                callConvergence.UpdateCallListen(devId);
+            }
+        }else{
+            CancelListenCall(devId);
+        }
+
+        return 0;
+    }
     
     public boolean CheckBroadCastEnabled(BackEndPhone phone){
         boolean result = true;
@@ -236,12 +251,14 @@ public class BackEndCallConvergenceManager {
     }
 
 
-    private boolean CheckInvitedEnable(BackEndPhone phone){
+    private boolean CheckInvitedEnable(BackEndPhone phone,int callType){
         boolean result = true;
         if(phone==null)
             return  false;
         if(!phone.isReg)
             return false;
+        if(callType>=CommonCall.ALERT_TYPE_BEGIN&&callType<=CommonCall.ALERT_TYPE_ENDED)
+            return true;
         for(BackEndCallConvergence callConvergence:callConvergenceList.values()){
             if(!callConvergence.CheckInvitedEnable(phone)) {
                 result = false;
@@ -269,7 +286,7 @@ public class BackEndCallConvergenceManager {
                 int  resultCode = ProtocolPacket.STATUS_OK;
                 BackEndPhone caller = HandlerMgr.GetBackEndPhone(inviteReqPack.caller);
                 BackEndPhone callee = HandlerMgr.GetBackEndPhone(inviteReqPack.callee);
-                if(CheckInviteEnable(caller)) {
+                if(CheckInviteEnable(caller,inviteReqPack.callType)) {
 
                     inviteReqPack.roomId = caller.devInfo.roomId;
                     inviteReqPack.roomName = caller.devInfo.roomName;
@@ -281,8 +298,9 @@ public class BackEndCallConvergenceManager {
                     if(inviteReqPack.callee.compareToIgnoreCase(PhoneParam.CALL_SERVER_ID)==0){
                         LogWork.Print(LogWork.BACKEND_CALL_MODULE,LogWork.LOG_DEBUG,"Server Recv %s Req from %s to %s",CommonCall.GetCallTypeName(inviteReqPack.callType),caller.id,PhoneParam.CALL_SERVER_ID);
                         callConvergence = new BackEndCallConvergence(caller,inviteReqPack);
-                        callConvergenceList.put(inviteReqPack.callID,callConvergence);
-                    }else if(CheckInvitedEnable(callee)){
+                        if(callConvergence.listenCallList.size()>0)
+                            callConvergenceList.put(inviteReqPack.callID,callConvergence);
+                    }else if(CheckInvitedEnable(callee,inviteReqPack.callType)){
                         LogWork.Print(LogWork.BACKEND_CALL_MODULE,LogWork.LOG_DEBUG,"Server Recv Call Req from %s to %s",caller.id,callee.id);
                         callConvergence = new BackEndCallConvergence(caller,callee,inviteReqPack);
                         callConvergenceList.put(inviteReqPack.callID,callConvergence);
@@ -330,7 +348,9 @@ public class BackEndCallConvergenceManager {
                             LogWork.Print(LogWork.BACKEND_CALL_MODULE,LogWork.LOG_DEBUG,"Server Remove %s From Call %s",endReqPack.endDevID,endReqPack.callID);
                             callConvergence.RecvSingleEnd(endReqPack);
                         }
-                    }else if(callConvergence.inviteCall.type==CommonCall.CALL_TYPE_NORMAL||callConvergence.inviteCall.type==CommonCall.CALL_TYPE_EMERGENCY||callConvergence.inviteCall.type==CommonCall.CALL_TYPE_ASSIST) {
+                    }else{
+                        // remove type check for Alert Call
+                        // if(callConvergence.inviteCall.type==CommonCall.CALL_TYPE_NORMAL||callConvergence.inviteCall.type==CommonCall.CALL_TYPE_EMERGENCY||callConvergence.inviteCall.type==CommonCall.CALL_TYPE_ASSIST) {
                         LogWork.Print(LogWork.BACKEND_CALL_MODULE,LogWork.LOG_DEBUG,"Server End Call %s",endReqPack.callID);
                         callConvergence.EndCall(endReqPack);
                         CallLogMessage  log = callConvergence.CreateCallLog();
