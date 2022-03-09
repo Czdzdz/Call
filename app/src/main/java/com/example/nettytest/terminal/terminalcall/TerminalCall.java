@@ -232,7 +232,7 @@ public class TerminalCall extends CommonCall {
             alertMsg.type = UserAlertMessage.ALERT_MESSAGE_END;
             alertMsg.devId = devID;
             alertMsg.alertID = callID;
-            alertMsg.alertType = type;
+            alertMsg.alertType = type-CommonCall.ALERT_TYPE_BEGIN;
             alertMsg.endReason = UserMessage.CALL_END_BY_SELF;
             HandlerMgr.SendMessageToUser(UserCallMessage.MESSAGE_ALERT_INFO,alertMsg);
         }else{
@@ -354,7 +354,7 @@ public class TerminalCall extends CommonCall {
             UserAlertMessage alertMsg = new UserAlertMessage();
             alertMsg.devId = devID;
             alertMsg.alertID= pack.callid;
-            alertMsg.alertType= type;
+            alertMsg.alertType= type-CommonCall.ALERT_TYPE_BEGIN;
 
             if(pack.status!=ProtocolPacket.STATUS_OK){
                 LogWork.Print(LogWork.TERMINAL_CALL_MODULE,LogWork.LOG_WARN,"Phone %s Recv %d(%s) for Update in Call %s!",devID,pack.status,ProtocolPacket.GetResString(pack.status),callID);
@@ -446,7 +446,7 @@ public class TerminalCall extends CommonCall {
             UserAlertMessage alertMsg = new UserAlertMessage();
             alertMsg.devId = devID;
             alertMsg.alertID = cancelReqP.callID;
-            alertMsg.alertType = type;
+            alertMsg.alertType = type-CommonCall.ALERT_TYPE_BEGIN;
             alertMsg.type = UserMessage.ALERT_MESSAGE_END;
             alertMsg.endReason = UserCallMessage.CALL_CANCEL_FOR_SERVER;
             HandlerMgr.SendMessageToUser(UserCallMessage.MESSAGE_ALERT_INFO,alertMsg);
@@ -476,7 +476,7 @@ public class TerminalCall extends CommonCall {
             UserAlertMessage alertMsg = new UserAlertMessage();
             alertMsg.devId = devID;
             alertMsg.alertID = pack.callID;
-            alertMsg.alertType = type;
+            alertMsg.alertType = type-CommonCall.ALERT_TYPE_BEGIN;
             alertMsg.type = UserMessage.ALERT_MESSAGE_END;
             alertMsg.endReason = pack.endReason;
             HandlerMgr.SendMessageToUser(UserCallMessage.MESSAGE_ALERT_INFO,alertMsg);
@@ -614,7 +614,7 @@ public class TerminalCall extends CommonCall {
             UserAlertMessage alertMsg = new UserAlertMessage();
             alertMsg.devId = devID;
             alertMsg.alertID = callID;
-            alertMsg.alertType = type;
+            alertMsg.alertType = type-CommonCall.ALERT_TYPE_BEGIN;
             alertMsg.type = UserAlertMessage.ALERT_MESSAGE_SEND_FAIL;
             alertMsg.reason = OperationResult.GetUserFailReason(ProtocolPacket.STATUS_TIMEOVER);
             HandlerMgr.SendMessageToUser(UserCallMessage.MESSAGE_ALERT_INFO,alertMsg);
@@ -644,7 +644,7 @@ public class TerminalCall extends CommonCall {
             UserAlertMessage alertMsg = new UserAlertMessage();
             alertMsg.devId = devID;
             alertMsg.alertID = callID;
-            alertMsg.alertType = type;
+            alertMsg.alertType = type-CommonCall.ALERT_TYPE_BEGIN;
             alertMsg.type = UserAlertMessage.ALERT_MESSAGE_END_FAIL;
             alertMsg.reason = OperationResult.GetUserFailReason(ProtocolPacket.STATUS_TIMEOVER);
             HandlerMgr.SendMessageToUser(UserCallMessage.MESSAGE_ALERT_INFO,alertMsg);
@@ -668,7 +668,7 @@ public class TerminalCall extends CommonCall {
                 UserAlertMessage alertMsg = new UserAlertMessage();
                 alertMsg.devId = devID;
                 alertMsg.alertID= callID;
-                alertMsg.alertType= type;
+                alertMsg.alertType= type-CommonCall.ALERT_TYPE_BEGIN;
                 alertMsg.type = UserMessage.ALERT_MESSAGE_UPDATE_FAIL;
                 alertMsg.reason = OperationResult.GetUserFailReason(ProtocolPacket.STATUS_TIMEOVER);
                 HandlerMgr.SendMessageToUser(UserMessage.MESSAGE_ALERT_INFO,alertMsg);

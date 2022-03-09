@@ -307,7 +307,7 @@ public class BackEndPhoneManager {
                 serverAreaLists.put(areaId,area);
                 ArrayList<AlertConfig> configs = new ArrayList<>();
                 AlertConfig defaultConfig = new AlertConfig();
-                defaultConfig.alertType = 1;
+                defaultConfig.alertType = 41;
                 defaultConfig.displayInfo= "皮试完成";
                 defaultConfig.voiceInfo = "皮试完成";
                 defaultConfig.nameType = AlertConfig.USE_BED_NAME;

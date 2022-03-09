@@ -74,39 +74,39 @@ public class TerminalRawTcpDevice extends RawTcpNetDevice {
                                             isReset = true;
                                             LogWork.Print(LogWork.TERMINAL_NET_MODULE,LogWork.LOG_ERROR,"Raw-TCP Client %s Read Return %d, Reset Socket",id,readRtn);
                                         }else {                                     
-                                        ((Buffer)buffer).flip();
-                                        byte[] bytes = new byte[buffer.limit()-buffer.position()];
-                                        buffer.get(bytes);
-                                        String data = new String(bytes,"UTF-8");
-                                        if(!remainData.isEmpty()){
-                                            data = remainData+data;
-                                            remainData = "";
-                                        }
-                                        String[] jsonData = data.split("\r\n");
-                                        for(int iTmp = 0;iTmp<jsonData.length;iTmp++) {
-                                            String jsonString = jsonData[iTmp];
-                                            if(jsonString.length()<1)
-                                                continue;
-                                            if(iTmp==jsonData.length-1){
-                                                String lastString = jsonString.substring(jsonString.length()-1);
-                                                byte[] lastbytes = lastString.getBytes();
-                                                if(lastbytes[0]!=0x7d&&lastbytes[0]!=0x0d&&lastbytes[0]!=0x0a){
-                                                    remainData += jsonString;
-                                                    LogWork.Print(LogWork.TERMINAL_NET_MODULE,LogWork.LOG_ERROR,"Raw-TCP Client %s save Temp Data %s",id,jsonString);
-                                                    break;
-                                                }
+                                            ((Buffer)buffer).flip();
+                                            byte[] bytes = new byte[buffer.limit()-buffer.position()];
+                                            buffer.get(bytes);
+                                            String data = new String(bytes,"UTF-8");
+                                            if(!remainData.isEmpty()){
+                                                data = remainData+data;
+                                                remainData = "";
                                             }
-                                            ProtocolPacket packet = ProtocolFactory.ParseData(jsonString);
-                                            if (packet != null) {
-                                                LogWork.Print(LogWork.TERMINAL_NET_MODULE, LogWork.LOG_DEBUG, "Raw-TCP Client %s Read %s Packet From Raw-TCP", id, ProtocolPacket.GetTypeName(packet.type));
-                                                HandlerMgr.PhoneProcessPacket(packet);
-                                            } else {
-                                                LogWork.Print(LogWork.TERMINAL_NET_MODULE, LogWork.LOG_ERROR, "Raw-TCP Client %s Recv %s", id, new String(bytes, "UTF-8"));
+                                            String[] jsonData = data.split("\r\n");
+                                            for(int iTmp = 0;iTmp<jsonData.length;iTmp++) {
+                                                String jsonString = jsonData[iTmp];
+                                                if(jsonString.length()<1)
+                                                    continue;
+                                                if(iTmp==jsonData.length-1){
+                                                    String lastString = jsonString.substring(jsonString.length()-1);
+                                                    byte[] lastbytes = lastString.getBytes();
+                                                    if(lastbytes[0]!=0x7d&&lastbytes[0]!=0x0d&&lastbytes[0]!=0x0a){
+                                                        remainData += jsonString;
+                                                        LogWork.Print(LogWork.TERMINAL_NET_MODULE,LogWork.LOG_ERROR,"Raw-TCP Client %s save Temp Data %s",id,jsonString);
+                                                        break;
+                                                    }
+                                                }
+                                                ProtocolPacket packet = ProtocolFactory.ParseData(jsonString);
+                                                if (packet != null) {
+                                                    LogWork.Print(LogWork.TERMINAL_NET_MODULE, LogWork.LOG_DEBUG, "Raw-TCP Client %s Read %s Packet From Raw-TCP", id, ProtocolPacket.GetTypeName(packet.type));
+                                                    HandlerMgr.PhoneProcessPacket(packet);
+                                                } else {
+                                                    LogWork.Print(LogWork.TERMINAL_NET_MODULE, LogWork.LOG_ERROR, "Raw-TCP Client %s Recv %s", id, new String(bytes, "UTF-8"));
+                                                }
                                             }
                                         }
                                     }
                                 }
-                            }
                             }else{
                                 LogWork.Print(LogWork.TERMINAL_NET_MODULE,LogWork.LOG_DEBUG,"Raw-TCP Dev %s Select Fail, Return is %d",id,events);
                             }

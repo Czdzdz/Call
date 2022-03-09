@@ -132,7 +132,7 @@ public class TestDevice extends UserDevice{
             alertInfo.status = LocalAlertInfo.LOCAL_ALERT_STATUS_OUTGOING;
             alertInfo.alertDev = devid;
             alertInfo.alertId = result.callID;
-            alertInfo.alertType = type+ CommonCall.ALERT_TYPE_BEGIN;
+            alertInfo.alertType = type;
             outGoingAlertList.add(alertInfo);
             UserInterface.PrintLog("Build Outging Alert %d  by Dev %s",type,devid);
         }
